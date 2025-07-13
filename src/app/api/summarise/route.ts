@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
-import * as cheerio from "cheerio";
+import { load } from "cheerio";
 
 // Function to translate text to Urdu using MyMemory Translation API
 async function translateToUrdu(text: string): Promise<string> {
@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const $ = cheerio.load(html);
+    const $ = load(html);
 
     // Extract main text (all paragraphs)
     const paragraphs = $("p")
-      .map((_: number, el: cheerio.Element) => $(el).text())
+      .map((_: number, el: HTMLElement) => $(el).text())
       .get();
     const mainText = paragraphs.join("\n");
 
