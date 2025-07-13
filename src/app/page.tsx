@@ -41,8 +41,6 @@ export default function Home() {
     }
   };
 
-  // Remove mainTextUrdu, showUrduBlog, and handleTranslateBlog
-
   return (
     <div className="min-h-screen flex flex-col bg-black text-white font-sans">
       {/* Header */}
