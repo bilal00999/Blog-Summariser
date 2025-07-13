@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     // Extract main text (all paragraphs)
     const paragraphs = $("p")
-      .map((_: number, el: HTMLElement) => $(el).text())
+      .map((_, el) => $(el).text())
       .get();
     const mainText = paragraphs.join("\n");
 
