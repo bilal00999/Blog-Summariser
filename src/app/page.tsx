@@ -1,103 +1,249 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [urduSummary, setUrduSummary] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [mainText, setMainText] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSummary(null);
+    setUrduSummary(null);
+    setMainText(null);
+    try {
+      const res = await fetch("/api/summarise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to summarise");
+        setSummary(data.summary || null);
+        setUrduSummary(data.urduSummary || null);
+        setMainText(data.mainText || null);
+        setLoading(false);
+        return;
+      }
+      setSummary(data.summary);
+      setUrduSummary(data.urduSummary);
+      setMainText(data.mainText);
+    } catch {
+      setError("Server error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Remove mainTextUrdu, showUrduBlog, and handleTranslateBlog
+
+  return (
+    <div className="min-h-screen flex flex-col bg-black text-white font-sans">
+      {/* Header */}
+      <header className="w-full flex flex-col md:grid md:grid-cols-3 items-center px-2 md:px-8 py-2 bg-black text-center md:text-left">
+        {/*Logo + BS */}
+        <div className="flex items-center gap-2 justify-center md:justify-start w-full md:w-auto mb-2 md:mb-0">
+          <img
+            src="/Vector.png"
+            alt="Logo"
+            className="h-8 w-8 md:h-12 md:w-12"
+          />
+          <span className="font-bold text-2xl md:text-4xl tracking-wide">
+            BS
+          </span>
         </div>
+        {/* BLOG SUMMARIZER + logo */}
+        <div className="flex flex-row justify-center items-center gap-2 w-full md:w-auto">
+          <span className="font-bold tracking-wider text-center text-lg sm:text-2xl md:text-[32px] leading-tight">
+            BLOG SUMMARIZER
+          </span>
+          <img
+            src="/Vector.png"
+            alt="Logo"
+            className="h-8 w-8 md:h-12 md:w-12"
+          />
+        </div>
+      </header>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-2 md:px-4 py-8 w-full">
+        <h1
+          className="font-extrabold text-center mb-2 mt-8 tracking-widest leading-[1.2] text-2xl sm:text-4xl md:text-6xl px-2"
+          style={{ fontFamily: "Poppins, Arial, sans-serif" }}
+        >
+          Summarize any Blog
+          <br />
+          in a click
+        </h1>
+        <p className="text-center text-base sm:text-lg md:text-xl text-gray-300 mb-8 max-w-2xl px-2">
+          BS This helps you summarize any blog into a clear, concise format
+          <br />
+          so you can save time, stay focused.
+        </p>
+        <form
+          onSubmit={handleSubmit}
+          className="w-full flex flex-col gap-2 items-center max-w-[800px]"
+          style={{ width: "100%" }}
+        >
+          <div className="text-center" style={{ fontSize: "24px" }}>
+            Paste your blog URL — we’ll do the reading and give you the summary!
+          </div>
+          <label htmlFor="url" className="sr-only">
+            Paste your blog URL
+          </label>
+          <div className="relative w-full flex flex-col items-center">
+            <input
+              id="url"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              required
+              placeholder="https://link-to-your-blog"
+              className="rounded px-4 py-3 outline-none transition-colors duration-200 w-full"
+              style={{
+                maxWidth: "800px",
+                background: "#000",
+                border: "2px solid #8FA1A3",
+                color: "#8FA1A3",
+                fontSize: "1.1rem",
+                caretColor: "#8FA1A3",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#8FA1A3";
+                e.currentTarget.style.background = "#000";
+                e.currentTarget.style.color = "#8FA1A3";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "#8FA1A3";
+                e.currentTarget.style.background = "#000";
+                e.currentTarget.style.color = "#8FA1A3";
+              }}
+              autoComplete="on"
+            />
+            <div className="w-full flex justify-end ml-0 mt-3 pr-0 md:ml-14 md:pr-[5%]">
+              <button
+                type="submit"
+                className="bg-[#5D5CFF] hover:bg-[#679eff] text-white px-4 py-2 rounded font-semibold transition text-sm w-full md:w-auto"
+                disabled={loading}
+                style={{ minWidth: "140px" }}
+              >
+                {loading ? "Summarizing..." : "Summarize This"}
+              </button>
+            </div>
+          </div>
+        </form>
+        {error && <div className="text-red-400 mt-4">{error}</div>}
+        {(summary || urduSummary || mainText) && (
+          <div className="w-full flex flex-col gap-6 items-center mt-8 px-2">
+            <div className="flex flex-col md:flex-row gap-6 w-full max-w-[800px] justify-center">
+              {/* English Summary Box */}
+              <div
+                className="rounded px-4 py-3 outline-none transition-colors duration-200 w-full md:w-[400px]"
+                style={{
+                  maxWidth: "400px",
+                  background: "#000",
+                  border: "2px solid #8FA1A3",
+                  color: "#8FA1A3",
+                  fontSize: "1.1rem",
+                  minHeight: "120px",
+                }}
+              >
+                <div
+                  className="font-semibold text-lg mb-2"
+                  style={{ color: "#8FA1A3" }}
+                >
+                  English Summary
+                </div>
+                {summary ? (
+                  <div
+                    className="whitespace-pre-line text-base"
+                    style={{ color: "#8FA1A3" }}
+                  >
+                    {summary}
+                  </div>
+                ) : (
+                  <div className="italic" style={{ color: "#8FA1A3" }}>
+                    No summary yet
+                  </div>
+                )}
+              </div>
+              {/* Urdu Summary Box */}
+              <div
+                className="rounded px-4 py-3 outline-none transition-colors duration-200 w-full md:w-[400px]"
+                style={{
+                  maxWidth: "400px",
+                  background: "#000",
+                  border: "2px solid #8FA1A3",
+                  color: "#8FA1A3",
+                  fontSize: "1.1rem",
+                  minHeight: "120px",
+                }}
+              >
+                <div
+                  className="font-semibold text-lg mb-2"
+                  style={{ color: "#8FA1A3" }}
+                >
+                  Urdu Summary
+                </div>
+                {urduSummary ? (
+                  <div
+                    className="whitespace-pre-line text-base"
+                    dir="rtl"
+                    lang="ur"
+                    style={{ color: "#8FA1A3" }}
+                  >
+                    {urduSummary}
+                  </div>
+                ) : (
+                  <div className="italic" style={{ color: "#8FA1A3" }}>
+                    No summary yet
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Full Blog Text Box */}
+            <div
+              className="rounded px-4 py-3 outline-none transition-colors duration-200 w-full max-w-[800px] relative"
+              style={{
+                background: "#000",
+                border: "2px solid #8FA1A3",
+                color: "#8FA1A3",
+                fontSize: "1.1rem",
+                minHeight: "180px",
+                overflowX: "auto",
+              }}
+            >
+              <div
+                className="font-semibold text-lg mb-2"
+                style={{ color: "#8FA1A3" }}
+              >
+                Full Blog Text
+              </div>
+              {mainText ? (
+                <div
+                  className="whitespace-pre-line text-base"
+                  style={{
+                    color: "#8FA1A3",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {mainText}
+                </div>
+              ) : (
+                <div className="italic" style={{ color: "#8FA1A3" }}>
+                  No blog text available
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
