@@ -13,7 +13,6 @@ export interface BlogContentInsert {
   fullText: string;
 }
 
-// Check if MongoDB is configured
 const isMongoConfigured =
   process.env.MONGODB_URI &&
   process.env.MONGODB_URI !== "your_mongodb_connection_string";
@@ -33,7 +32,6 @@ if (!isMongoConfigured) {
     maxPoolSize: 10,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
-    // Fix SSL issues with correct MongoDB options
     ssl: true,
     tlsAllowInvalidCertificates: true,
     tlsAllowInvalidHostnames: true,
@@ -42,8 +40,6 @@ if (!isMongoConfigured) {
   let client: MongoClient;
 
   if (process.env.NODE_ENV === "development") {
-    // In development mode, use a global variable so that the value
-    // is preserved across module reloads caused by HMR (Hot Module Replacement).
     const globalWithMongo = global as typeof globalThis & {
       _mongoClientPromise?: Promise<MongoClient>;
     };
@@ -54,7 +50,6 @@ if (!isMongoConfigured) {
     }
     clientPromise = globalWithMongo._mongoClientPromise;
   } else {
-    // In production mode, it's best to not use a global variable.
     client = new MongoClient(uri, options);
     clientPromise = client.connect();
   }
