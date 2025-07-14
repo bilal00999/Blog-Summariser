@@ -37,16 +37,15 @@ export async function POST(req: NextRequest) {
     try {
       const res = await axios.get(url, {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "User-Agent": "Mozilla/5.0",
+          Accept: "text/html",
         },
       });
       html = res.data;
-    } catch {
+    } catch (fetchError) {
+      console.error("Error fetching blog content:", fetchError);
       return NextResponse.json(
-        { error: "Failed to fetch blog content" },
+        { error: "Failed to fetch blog content", details: String(fetchError) },
         { status: 500 }
       );
     }
