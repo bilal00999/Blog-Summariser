@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    // Test the connection by trying to select from the summaries table
     const { data, error } = await supabase
       .from("summaries")
       .select("count")

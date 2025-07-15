@@ -3,6 +3,7 @@ import axios from "axios";
 import { load } from "cheerio";
 import { supabase } from "@/lib/supabase";
 import clientPromise from "@/lib/mongodb";
+import { extractFromGemini, summariseText } from "@/lib/gemini";
 
 // Translate to Urdu using MyMemory API
 async function translateToUrdu(text: string): Promise<string> {
@@ -32,31 +33,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Scrape blog content
-    let html: string;
-    try {
-      const res = await axios.get(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          Accept: "text/html",
-        },
-      });
-      html = res.data;
-    } catch (fetchError) {
-      console.error("Error fetching blog content:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch blog content", details: String(fetchError) },
-        { status: 500 }
-      );
+    let mainText = "";
+    // Use Gemini for Medium/Quora, fallback to Cheerio for others
+    const isGeminiSite =
+      url.includes("medium.com") || url.includes("quora.com");
+    if (isGeminiSite) {
+      // Fetch raw HTML
+      let html: string;
+      try {
+        const res = await axios.get(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0",
+            Accept: "text/html",
+          },
+        });
+        html = res.data;
+      } catch (fetchError) {
+        console.error("Error fetching blog content:", fetchError);
+        return NextResponse.json(
+          {
+            error: "Failed to fetch blog content",
+            details: String(fetchError),
+          },
+          { status: 500 }
+        );
+      }
+      mainText = await extractFromGemini(html);
+    } else {
+      // Fallback: Cheerio extraction
+      let html: string;
+      try {
+        const res = await axios.get(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0",
+            Accept: "text/html",
+          },
+        });
+        html = res.data;
+      } catch (fetchError) {
+        console.error("Error fetching blog content:", fetchError);
+        return NextResponse.json(
+          {
+            error: "Failed to fetch blog content",
+            details: String(fetchError),
+          },
+          { status: 500 }
+        );
+      }
+      const $ = load(html);
+      const paragraphs = $("p")
+        .map((_, el) => $(el).text())
+        .get();
+      mainText = paragraphs.join("\n");
     }
 
-    const $ = load(html);
-    const paragraphs = $("p")
-      .map((_, el) => $(el).text())
-      .get();
-    const fullText = paragraphs.join("\n");
-    const summaryLines = paragraphs.slice(0, 5);
-    const englishSummary = summaryLines.join(" ").slice(0, 500);
+    // Use Gemini for summarisation
+    const englishSummary = await summariseText(mainText);
     if (!englishSummary.trim()) {
       return NextResponse.json(
         { error: "Could not extract summary from blog" },
@@ -106,7 +138,7 @@ export async function POST(req: NextRequest) {
         const collection = db.collection("blog-contents");
         mongoResult = await collection.insertOne({
           url,
-          fullText,
+          fullText: mainText,
           createdAt: new Date(),
         });
       }
@@ -120,7 +152,7 @@ export async function POST(req: NextRequest) {
       url,
       summary: englishSummary,
       urduSummary,
-      mainText: fullText,
+      mainText,
       message: mongoError
         ? "Summary saved in Supabase, but MongoDB failed"
         : "Summary saved in Supabase and full blog text saved in MongoDB successfully",

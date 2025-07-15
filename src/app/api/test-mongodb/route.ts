@@ -18,7 +18,6 @@ export async function GET() {
     const db = client.db(process.env.MONGODB_DB || "blog-summariser");
     const collection = db.collection("blog-contents");
 
-    // Test the connection by trying to count documents
     const count = await collection.countDocuments();
 
     return NextResponse.json({
