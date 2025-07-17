@@ -8,15 +8,28 @@ import { extractFromGemini, summariseText } from "@/lib/gemini";
 // Translate to Urdu using MyMemory API
 async function translateToUrdu(text: string): Promise<string> {
   try {
-    const encodedText = encodeURIComponent(text);
-    const response = await axios.get(
-      `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|ur`
+    // Split text into sentences for better translation reliability
+    const sentences = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
+    const translations = await Promise.all(
+      sentences.map(async (sentence) => {
+        const encodedText = encodeURIComponent(sentence.trim());
+        if (!encodedText) return "";
+        try {
+          const response = await axios.get(
+            `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|ur`
+          );
+          if (response.data.responseStatus === 200) {
+            return response.data.responseData.translatedText;
+          } else {
+            throw new Error("Translation failed");
+          }
+        } catch (error) {
+          console.error("Translation error for sentence:", sentence, error);
+          return sentence; // fallback to original sentence
+        }
+      })
     );
-    if (response.data.responseStatus === 200) {
-      return response.data.responseData.translatedText;
-    } else {
-      throw new Error("Translation failed");
-    }
+    return translations.join(" ");
   } catch (error) {
     console.error("Translation error:", error);
     return text;
@@ -95,7 +108,18 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+    // Log the English summary
+    console.log("English Summary:", englishSummary);
     const urduSummary = await translateToUrdu(englishSummary);
+    // Log the Urdu summary
+    console.log("Urdu Summary:", urduSummary);
+    // Warn if translation failed
+    let translationWarning = null;
+    if (urduSummary.trim() === englishSummary.trim()) {
+      translationWarning =
+        "Translation to Urdu may have failed. Returning English summary as fallback.";
+      console.warn(translationWarning);
+    }
 
     // Store summary in Supabase
     let supabaseError = null;
@@ -153,6 +177,7 @@ export async function POST(req: NextRequest) {
       summary: englishSummary,
       urduSummary,
       mainText,
+      translationWarning,
       message: mongoError
         ? "Summary saved in Supabase, but MongoDB failed"
         : "Summary saved in Supabase and full blog text saved in MongoDB successfully",
