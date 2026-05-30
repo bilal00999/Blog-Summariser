@@ -123,10 +123,12 @@ export async function POST(req: NextRequest) {
     try {
       mainText = await extractFromGemini(html);
     } catch (geminiError) {
-      console.error(
-        "Gemini API failed, falling back to Cheerio extraction:",
-        geminiError,
+      console.warn(
+        "⚠️ Gemini API error (expected if quota exceeded), using Cheerio fallback...",
       );
+      if (geminiError instanceof Error) {
+        console.warn("Gemini error:", geminiError.message.split("\n")[0]); // Only first line to avoid spam
+      }
       // Fallback: Use Cheerio to extract text if Gemini fails
       const $ = load(html);
       const paragraphs = $("p")
@@ -147,10 +149,12 @@ export async function POST(req: NextRequest) {
     try {
       englishSummary = await summariseText(mainText);
     } catch (summarizeError) {
-      console.error(
-        "Gemini summarization failed, using fallback extraction:",
-        summarizeError,
+      console.warn(
+        "⚠️ Gemini summarization failed (expected if quota exceeded), using manual extraction...",
       );
+      if (summarizeError instanceof Error) {
+        console.warn("Summarize error:", summarizeError.message.split("\n")[0]); // Only first line
+      }
       // Fallback: Extract key sentences manually
       const sentences = mainText.match(/[^.!?]+[.!?]+/g) || [];
       englishSummary = sentences
