@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -111,10 +112,12 @@ export default function Home() {
       <header className="w-full flex flex-col md:grid md:grid-cols-3 items-center px-2 md:px-8 py-2 bg-black text-center md:text-left">
         {/*Logo + BS */}
         <div className="flex items-center gap-2 justify-center md:justify-start w-full md:w-auto mb-2 md:mb-0">
-          <img
+          <Image
             src="/Vector.png"
             alt="Logo"
             className="h-8 w-8 md:h-12 md:w-12"
+            width={48}
+            height={48}
           />
           <span className="font-bold text-2xl md:text-4xl tracking-wide">
             BS
@@ -125,10 +128,12 @@ export default function Home() {
           <span className="font-bold tracking-wider text-center text-lg sm:text-2xl md:text-[32px] leading-tight">
             BLOG SUMMARIZER
           </span>
-          <img
+          <Image
             src="/Vector.png"
             alt="Logo"
             className="h-8 w-8 md:h-12 md:w-12"
+            width={48}
+            height={48}
           />
         </div>
       </header>

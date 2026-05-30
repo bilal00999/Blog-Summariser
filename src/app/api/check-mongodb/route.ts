@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import type { Document } from "mongodb";
 
 export async function GET() {
   try {
@@ -33,7 +34,7 @@ export async function GET() {
       database: process.env.MONGODB_DB || "blog-summariser",
       collection: "blog-contents",
       totalDocuments: count,
-      recentDocuments: latestDocs.map((doc: any) => ({
+      recentDocuments: latestDocs.map((doc: Document) => ({
         _id: doc._id,
         url: doc.url,
         createdAt: doc.createdAt,
