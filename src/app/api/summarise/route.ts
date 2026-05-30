@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
       url,
       summary: englishSummary,
       urduSummary,
-      mainText: mainText.substring(0, 500) + "...", // Include first 500 chars
+      mainText: mainText, // Return full blog text
       translationWarning,
       message: "Summary generated successfully",
       storedInSupabase: !supabaseError,

@@ -328,7 +328,7 @@ export default function Home() {
               <div
                 className="overflow-hidden transition-all duration-300"
                 style={{
-                  maxHeight: showFullBlog ? 400 : 0,
+                  maxHeight: showFullBlog ? "600px" : 0,
                   opacity: showFullBlog ? 1 : 0,
                   background: "rgba(30,30,30,0.7)",
                   border: showFullBlog ? "2px solid #eee" : "none",
@@ -349,8 +349,9 @@ export default function Home() {
                     className="whitespace-pre-line text-base fullblog-scrollbar"
                     style={{
                       color: "#8A9B9D",
-                      maxHeight: "340px",
+                      maxHeight: "560px",
                       overflowY: "auto",
+                      paddingRight: "8px",
                     }}
                   >
                     {mainText}
