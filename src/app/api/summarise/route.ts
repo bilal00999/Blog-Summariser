@@ -83,18 +83,20 @@ export async function POST(req: NextRequest) {
 
         if (res.status >= 200 && res.status < 300) {
           html = res.data;
-          console.log(`Successfully fetched: ${url}`);
+          console.log(`✅ Successfully fetched: ${url} (Status: ${res.status})`);
           break;
         } else if (res.status === 403) {
           console.log(
-            `Got 403 Forbidden for ${url}, trying alternative headers...`,
+            `⚠️ Got 403 Forbidden for ${url}, trying alternative headers...`,
           );
           continue;
         } else if (res.status === 404) {
-          throw new Error(`URL not found: ${url}`);
+          throw new Error(`URL not found (404): ${url}`);
+        } else {
+          console.log(`⚠️ Got status ${res.status} for ${url}, trying next variant...`);
         }
       } catch (err) {
-        console.log("Axios request failed, trying next variant...", err);
+        console.log(`❌ Fetch failed:`, err instanceof Error ? err.message : String(err));
         continue;
       }
     }
@@ -110,8 +112,8 @@ export async function POST(req: NextRequest) {
           url,
           suggestion:
             "Try a publicly accessible blog URL (e.g., dev.to, hashnode.com, or your own blog)",
-          demoMode: true,
-          demoSummary: "Demo: Web Performance & Optimization Guide",
+          environment: process.env.NODE_ENV,
+          deploymentRegion: "Vercel",
         },
         { status: 503 },
       );
@@ -224,7 +226,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Return success with summary regardless of database errors
-    return NextResponse.json({
+    const response = {
       url,
       summary: englishSummary,
       urduSummary,
@@ -235,7 +237,20 @@ export async function POST(req: NextRequest) {
       storedInMongoDB: mongoStored,
       supabaseError: supabaseError ? String(supabaseError) : null,
       mongoError: mongoError ? String(mongoError) : null,
+      textLength: mainText.length,
+      summaryLength: englishSummary.length,
+      environment: process.env.NODE_ENV,
+    };
+    
+    console.log("📤 Response sent:", {
+      url,
+      textLength: mainText.length,
+      summaryLength: englishSummary.length,
+      storedInMongoDB: mongoStored,
+      storedInSupabase: !supabaseError,
     });
+    
+    return NextResponse.json(response);
   } catch (err) {
     let errorMsg = "Failed to process request";
     if (err instanceof Error) {
