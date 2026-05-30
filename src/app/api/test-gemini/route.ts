@@ -1,7 +1,15 @@
 export async function GET() {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "API key not configured" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const result = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -16,7 +24,7 @@ export async function GET() {
             },
           ],
         }),
-      }
+      },
     );
 
     const data = await result.json();

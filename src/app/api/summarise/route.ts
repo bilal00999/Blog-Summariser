@@ -16,7 +16,7 @@ async function translateToUrdu(text: string): Promise<string> {
         if (!encodedText) return "";
         try {
           const response = await axios.get(
-            `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|ur`
+            `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|ur`,
           );
           if (response.data.responseStatus === 200) {
             return response.data.responseData.translatedText;
@@ -27,7 +27,7 @@ async function translateToUrdu(text: string): Promise<string> {
           console.error("Translation error for sentence:", sentence, error);
           return sentence; // fallback to original sentence
         }
-      })
+      }),
     );
     return translations.join(" ");
   } catch (error) {
@@ -42,70 +42,129 @@ export async function POST(req: NextRequest) {
     if (!url) {
       return NextResponse.json(
         { error: "Missing required field: url" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     let mainText = "";
-    // Use Gemini for Medium/Quora, fallback to Cheerio for others
-    const isGeminiSite =
-      url.includes("medium.com") || url.includes("quora.com");
-    if (isGeminiSite) {
-      // Fetch raw HTML
-      let html: string;
+    // Try multiple methods to fetch blog content
+    let html: string | null = null;
+
+    // Method 1: Try with axios and various header combinations
+    const headerVariants = [
+      {
+        // Browser-like headers
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate",
+        Connection: "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+      },
+      {
+        // Alternative headers
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "*/*",
+        "Cache-Control": "no-cache",
+      },
+    ];
+
+    for (const headers of headerVariants) {
       try {
         const res = await axios.get(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-            Accept: "text/html",
-          },
+          headers,
+          timeout: 10000,
+          maxRedirects: 5,
+          validateStatus: () => true, // Accept any status code
         });
-        html = res.data;
-      } catch (fetchError) {
-        console.error("Error fetching blog content:", fetchError);
-        return NextResponse.json(
-          {
-            error: "Failed to fetch blog content",
-            details: String(fetchError),
-          },
-          { status: 500 }
-        );
+
+        if (res.status >= 200 && res.status < 300) {
+          html = res.data;
+          console.log(`Successfully fetched: ${url}`);
+          break;
+        } else if (res.status === 403) {
+          console.log(
+            `Got 403 Forbidden for ${url}, trying alternative headers...`,
+          );
+          continue;
+        } else if (res.status === 404) {
+          throw new Error(`URL not found: ${url}`);
+        }
+      } catch (err) {
+        console.log("Axios request failed, trying next variant...", err);
+        continue;
       }
+    }
+
+    // If no headers worked, try without auth
+    if (!html) {
+      console.log(`All header variants failed for ${url}`);
+      return NextResponse.json(
+        {
+          error: "Failed to fetch blog content",
+          reason:
+            "The website is blocking automated requests or the URL is invalid",
+          url,
+          suggestion:
+            "Try a publicly accessible blog URL (e.g., dev.to, hashnode.com, or your own blog)",
+          demoMode: true,
+          demoSummary: "Demo: Web Performance & Optimization Guide",
+        },
+        { status: 503 },
+      );
+    }
+
+    // Use Gemini to extract content from HTML
+    try {
       mainText = await extractFromGemini(html);
-    } else {
-      // Fallback: Cheerio extraction
-      let html: string;
-      try {
-        const res = await axios.get(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-            Accept: "text/html",
-          },
-        });
-        html = res.data;
-      } catch (fetchError) {
-        console.error("Error fetching blog content:", fetchError);
-        return NextResponse.json(
-          {
-            error: "Failed to fetch blog content",
-            details: String(fetchError),
-          },
-          { status: 500 }
-        );
-      }
+    } catch (geminiError) {
+      console.error(
+        "Gemini API failed, falling back to Cheerio extraction:",
+        geminiError,
+      );
+      // Fallback: Use Cheerio to extract text if Gemini fails
       const $ = load(html);
       const paragraphs = $("p")
         .map((_, el) => $(el).text())
         .get();
       mainText = paragraphs.join("\n");
+
+      if (!mainText.trim()) {
+        // Try other selectors
+        const articles = $("article").text();
+        const main = $("main").text();
+        mainText = articles || main || "No text content found";
+      }
     }
 
     // Use Gemini for summarisation
-    const englishSummary = await summariseText(mainText);
+    let englishSummary: string;
+    try {
+      englishSummary = await summariseText(mainText);
+    } catch (summarizeError) {
+      console.error(
+        "Gemini summarization failed, using fallback extraction:",
+        summarizeError,
+      );
+      // Fallback: Extract key sentences manually
+      const sentences = mainText.match(/[^.!?]+[.!?]+/g) || [];
+      englishSummary = sentences
+        .slice(0, 5) // Take first 5 sentences
+        .join(" ")
+        .trim();
+
+      if (!englishSummary) {
+        englishSummary = mainText.substring(0, 500); // Fallback: first 500 chars
+      }
+    }
+
     if (!englishSummary.trim()) {
       return NextResponse.json(
         { error: "Could not extract summary from blog" },
-        { status: 500 }
+        { status: 500 },
       );
     }
     // Log the English summary
@@ -121,7 +180,7 @@ export async function POST(req: NextRequest) {
       console.warn(translationWarning);
     }
 
-    // Store summary in Supabase
+    // Store summary in Supabase (non-blocking - don't fail if this fails)
     let supabaseError = null;
     try {
       const { error } = await supabase.from("summaries").insert({
@@ -138,50 +197,43 @@ export async function POST(req: NextRequest) {
       supabaseError = err;
       console.error("Supabase error:", err);
     }
-    if (supabaseError) {
-      console.error(
-        "Full Supabase error details:",
-        JSON.stringify(supabaseError, null, 2)
-      );
-      return NextResponse.json(
-        {
-          error: "Failed to insert into Supabase",
-          details: String(supabaseError),
-        },
-        { status: 500 }
-      );
-    }
 
-    // Store full blog text in MongoDB
-    let mongoResult = null;
+    // Store full blog text in MongoDB (non-blocking)
     let mongoError = null;
+    let mongoStored = false;
     try {
       const client = await clientPromise;
       if (client) {
         const db = client.db(process.env.MONGODB_DB || "blog-summariser");
         const collection = db.collection("blog-contents");
-        mongoResult = await collection.insertOne({
+        const result = await collection.insertOne({
           url,
           fullText: mainText,
+          englishSummary,
+          urduSummary,
           createdAt: new Date(),
         });
+        if (result.insertedId) {
+          mongoStored = true;
+          console.log("✓ Stored in MongoDB:", result.insertedId);
+        }
       }
-    } catch (error) {
-      mongoError = error;
-      console.error("MongoDB error:", error);
-      // Don't fail the entire request if MongoDB fails
+    } catch (err) {
+      mongoError = err;
+      console.error("MongoDB error:", err);
     }
 
+    // Return success with summary regardless of database errors
     return NextResponse.json({
       url,
       summary: englishSummary,
       urduSummary,
-      mainText,
+      mainText: mainText.substring(0, 500) + "...", // Include first 500 chars
       translationWarning,
-      message: mongoError
-        ? "Summary saved in Supabase, but MongoDB failed"
-        : "Summary saved in Supabase and full blog text saved in MongoDB successfully",
-      mongoResultId: mongoResult?.insertedId,
+      message: "Summary generated successfully",
+      storedInSupabase: !supabaseError,
+      storedInMongoDB: mongoStored,
+      supabaseError: supabaseError ? String(supabaseError) : null,
       mongoError: mongoError ? String(mongoError) : null,
     });
   } catch (err) {
