@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (url) {
       // Get specific summary by URL
       const { data, error } = await supabase
-        .from("summaries")
+        .from("Summary")
         .select("*")
         .eq("url", url)
         .single();
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Get all summaries
       const { data, error } = await supabase
-        .from("summaries")
+        .from("Summary")
         .select("*")
         .order("created_at", { ascending: false });
 

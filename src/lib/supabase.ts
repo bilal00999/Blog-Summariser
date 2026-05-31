@@ -9,13 +9,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface Summary {
   id?: string;
   url: string;
-  english_summary: string;
+  summary: string;
   urdu_summary: string;
   created_at?: string;
 }
 
 export interface SummaryInsert {
   url: string;
-  english_summary: string;
+  summary: string;
   urdu_summary: string;
 }

@@ -83,7 +83,9 @@ export async function POST(req: NextRequest) {
 
         if (res.status >= 200 && res.status < 300) {
           html = res.data;
-          console.log(`✅ Successfully fetched: ${url} (Status: ${res.status})`);
+          console.log(
+            `✅ Successfully fetched: ${url} (Status: ${res.status})`,
+          );
           break;
         } else if (res.status === 403) {
           console.log(
@@ -93,10 +95,15 @@ export async function POST(req: NextRequest) {
         } else if (res.status === 404) {
           throw new Error(`URL not found (404): ${url}`);
         } else {
-          console.log(`⚠️ Got status ${res.status} for ${url}, trying next variant...`);
+          console.log(
+            `⚠️ Got status ${res.status} for ${url}, trying next variant...`,
+          );
         }
       } catch (err) {
-        console.log(`❌ Fetch failed:`, err instanceof Error ? err.message : String(err));
+        console.log(
+          `❌ Fetch failed:`,
+          err instanceof Error ? err.message : String(err),
+        );
         continue;
       }
     }
@@ -189,9 +196,9 @@ export async function POST(req: NextRequest) {
     // Store summary in Supabase (non-blocking - don't fail if this fails)
     let supabaseError = null;
     try {
-      const { error } = await supabase.from("summaries").insert({
+      const { error } = await supabase.from("Summary").insert({
         url,
-        english_summary: englishSummary,
+        summary: englishSummary,
         urdu_summary: urduSummary,
         created_at: new Date().toISOString(),
       });
@@ -245,7 +252,7 @@ export async function POST(req: NextRequest) {
       summaryLength: englishSummary.length,
       environment: process.env.NODE_ENV,
     };
-    
+
     console.log("📤 Response sent:", {
       url,
       textLength: mainText.length,
@@ -253,7 +260,7 @@ export async function POST(req: NextRequest) {
       storedInMongoDB: mongoStored,
       storedInSupabase: !supabaseError,
     });
-    
+
     return NextResponse.json(response);
   } catch (err) {
     let errorMsg = "Failed to process request";
