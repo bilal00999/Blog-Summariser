@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
     let mainText = "";
     // Try multiple methods to fetch blog content
     let html: string | null = null;
+    let lastFetchStatus: number | null = null;
+    let lastFetchError: string | null = null;
 
     // Method 1: Try with axios and various header combinations
     const headerVariants = [
@@ -88,6 +90,8 @@ export async function POST(req: NextRequest) {
           );
           break;
         } else if (res.status === 403) {
+          lastFetchStatus = res.status;
+          lastFetchError = "The target website returned 403 Forbidden";
           console.log(
             `⚠️ Got 403 Forbidden for ${url}, trying alternative headers...`,
           );
@@ -95,11 +99,14 @@ export async function POST(req: NextRequest) {
         } else if (res.status === 404) {
           throw new Error(`URL not found (404): ${url}`);
         } else {
+          lastFetchStatus = res.status;
+          lastFetchError = `The target website returned status ${res.status}`;
           console.log(
             `⚠️ Got status ${res.status} for ${url}, trying next variant...`,
           );
         }
       } catch (err) {
+        lastFetchError = err instanceof Error ? err.message : String(err);
         console.log(
           `❌ Fetch failed:`,
           err instanceof Error ? err.message : String(err),
@@ -111,18 +118,24 @@ export async function POST(req: NextRequest) {
     // If no headers worked, try without auth
     if (!html) {
       console.log(`All header variants failed for ${url}`);
+      const blockedBySite = lastFetchStatus === 403;
       return NextResponse.json(
         {
           error: "Failed to fetch blog content",
-          reason:
-            "The website is blocking automated requests or the URL is invalid",
+          reason: blockedBySite
+            ? "The website blocked automated requests (403 Forbidden). Try a publicly accessible article or a different source URL."
+            : "The website is blocking automated requests or the URL is invalid",
           url,
           suggestion:
-            "Try a publicly accessible blog URL (e.g., dev.to, hashnode.com, or your own blog)",
+            blockedBySite
+              ? "Medium often blocks server-side fetches. Try a public blog URL, a RSS/article mirror, or another site that allows scraping."
+              : "Try a publicly accessible blog URL (e.g., dev.to, hashnode.com, or your own blog)",
           environment: process.env.NODE_ENV,
           deploymentRegion: "Vercel",
+          upstreamStatus: lastFetchStatus,
+          upstreamError: lastFetchError,
         },
-        { status: 503 },
+        { status: blockedBySite ? 403 : 503 },
       );
     }
 
